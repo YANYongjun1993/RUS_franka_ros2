@@ -66,6 +66,9 @@
       joint_impedance_example_controller:
         type: franka_example_controllers/JointImpedanceExampleController
 
+      joint_impedance_force_z_down_controller:
+        type: franka_example_controllers/JointImpedanceForceZDownController
+
       joint_impedance_with_ik_example_controller:
         type: franka_example_controllers/JointImpedanceWithIKExampleController
 
@@ -134,6 +137,42 @@
         - 10.0
         - 10.0
         - 5.0
+
+/**:
+  joint_impedance_force_z_down_controller:
+    ros__parameters:
+      translational_stiffness:
+        x: 20.0
+        y: 20.0
+        z: 400.0
+      translational_damping:
+        x: 40.0
+        y: 40.0
+        z: 70.0
+      rotational_stiffness:
+        x: 30.0
+        y: 30.0
+        z: 30.0
+      rotational_damping:
+        x: 6.0
+        y: 6.0
+        z: 6.0
+
+      # Desired contact force magnitude along world -Z, downward positive [N].
+      force_z_desired_down: 5.0
+      force_filter_cutoff_hz: 20.0
+      admittance_gain: 0.0002
+      vz_max: 0.02
+      z_max: 0.02
+
+      nullspace_stiffness: 15.0
+      nullspace_damping: 3.0
+
+      max_force_xy: 30.0
+      max_force_z: 80.0
+      max_torque_xyz: 20.0
+      max_joint_torque: 80.0
+      max_delta_tau: 1.0
 
 /**:
   move_to_start_example_controller:

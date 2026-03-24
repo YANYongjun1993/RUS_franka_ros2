@@ -41,6 +41,7 @@ add_library(
         src/fr3/gravity_compensation_example_controller.cpp
         src/fr3/gripper_example_controller.cpp
         src/fr3/joint_impedance_example_controller.cpp
+        src/fr3/joint_impedance_force_z_down_controller.cpp
         src/fr3/joint_impedance_with_ik_example_controller.cpp
         src/fr3/joint_position_example_controller.cpp
         src/fr3/joint_velocity_example_controller.cpp

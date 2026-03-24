@@ -11,6 +11,12 @@
             The joint impedance example controller moves joint 4 and 5 in a very compliant periodic movement.
         </description>
     </class>
+    <class name="franka_example_controllers/JointImpedanceForceZDownController"
+           type="franka_example_controllers::JointImpedanceForceZDownController" base_class_type="controller_interface::ControllerInterface">
+        <description>
+            Torque controller with anisotropic Cartesian impedance and Z-force admittance while keeping flange z-axis down and yaw fixed.
+        </description>
+    </class>
     <class name="franka_example_controllers/JointVelocityExampleController"
            type="franka_example_controllers::JointVelocityExampleController" base_class_type="controller_interface::ControllerInterface">
         <description>
