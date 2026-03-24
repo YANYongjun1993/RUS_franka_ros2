@@ -25,6 +25,7 @@
 
 #include <franka/model.h>
 #include <rclcpp/logging.hpp>
+#include <std_msgs/msg/float64_multi_array.hpp>
 
 #include "pluginlib/class_list_macros.hpp"
 
@@ -141,6 +142,9 @@ controller_interface::return_type JointImpedanceForceZDownController::update(
       rotational_stiffness_.cwiseProduct(orientation_error) -
       rotational_damping_.cwiseProduct(angular_velocity);
 
+  const Vector3d force_command_unsat = force_command;
+  const Vector3d torque_command_unsat = torque_command;
+
   force_command.x() = clamp_abs(force_command.x(), max_force_xy_);
   force_command.y() = clamp_abs(force_command.y(), max_force_xy_);
   force_command.z() = clamp_abs(force_command.z(), max_force_z_);
@@ -148,6 +152,11 @@ controller_interface::return_type JointImpedanceForceZDownController::update(
   torque_command.x() = clamp_abs(torque_command.x(), max_torque_xyz_);
   torque_command.y() = clamp_abs(torque_command.y(), max_torque_xyz_);
   torque_command.z() = clamp_abs(torque_command.z(), max_torque_xyz_);
+
+    const bool force_saturation_active =
+      (force_command - force_command_unsat).lpNorm<Eigen::Infinity>() > 1e-9;
+    const bool torque_saturation_active =
+      (torque_command - torque_command_unsat).lpNorm<Eigen::Infinity>() > 1e-9;
 
   Vector6d desired_wrench;
   desired_wrench << force_command, torque_command;
@@ -170,17 +179,73 @@ controller_interface::return_type JointImpedanceForceZDownController::update(
 
   Vector7d tau_desired = tau_task + coriolis + tau_nullspace;
 
+  const Vector7d tau_desired_before_joint_saturation = tau_desired;
+
   if (max_joint_torque_ > 0.0) {
     for (int i = 0; i < kNumJoints; ++i) {
       tau_desired(i) = clamp_abs(tau_desired(i), max_joint_torque_);
     }
   }
 
+  const bool joint_torque_saturation_active =
+      (tau_desired - tau_desired_before_joint_saturation).lpNorm<Eigen::Infinity>() > 1e-9;
+
   const Vector7d tau_command = saturate_torque_rate(tau_desired);
+  const bool torque_rate_saturation_active =
+      (tau_command - tau_desired).lpNorm<Eigen::Infinity>() > 1e-9;
   tau_previous_ = tau_command;
 
   for (int i = 0; i < kNumJoints; ++i) {
     command_interfaces_[i].set_value(tau_command(i));
+  }
+
+  if (status_publisher_ && status_publish_rate_hz_ > 0.0) {
+    status_publish_accumulator_ += dt;
+    const double status_period = 1.0 / status_publish_rate_hz_;
+    if (status_publish_accumulator_ >= status_period) {
+      status_publish_accumulator_ -= status_period;
+      std_msgs::msg::Float64MultiArray msg;
+      // Layout:
+      // [0]  force_down_filtered [N, down positive]
+      // [1]  force_z_desired_down [N]
+      // [2]  force_error [N]
+      // [3]  down_pos_desired - down_pos_initial [m]
+      // [4:6] position_error xyz [m]
+      // [7]  orientation_error_norm [rad]
+      // [8:10] force_command xyz [N]
+      // [11:13] torque_command xyz [Nm]
+      // [14] tau_task_norm [Nm]
+      // [15] tau_nullspace_norm [Nm]
+      // [16] tau_command_norm [Nm]
+      // [17] force saturation flag [0/1]
+      // [18] rotational torque saturation flag [0/1]
+      // [19] joint torque saturation flag [0/1]
+      // [20] torque-rate saturation flag [0/1]
+      msg.data = {
+          force_down_filtered_,
+          force_z_desired_down_,
+          force_error,
+          down_pos_desired_ - down_pos_initial_,
+          position_error.x(),
+          position_error.y(),
+          position_error.z(),
+          orientation_error.norm(),
+          force_command.x(),
+          force_command.y(),
+          force_command.z(),
+          torque_command.x(),
+          torque_command.y(),
+          torque_command.z(),
+          tau_task.norm(),
+          tau_nullspace.norm(),
+          tau_command.norm(),
+          force_saturation_active ? 1.0 : 0.0,
+          torque_saturation_active ? 1.0 : 0.0,
+          joint_torque_saturation_active ? 1.0 : 0.0,
+          torque_rate_saturation_active ? 1.0 : 0.0,
+      };
+      status_publisher_->publish(msg);
+    }
   }
 
   return controller_interface::return_type::OK;
@@ -221,6 +286,8 @@ CallbackReturn JointImpedanceForceZDownController::on_init() {
     auto_declare<double>("max_torque_xyz", 20.0);
     auto_declare<double>("max_joint_torque", 80.0);
     auto_declare<double>("max_delta_tau", 1.0);
+    auto_declare<std::string>("status_topic", "joint_impedance_force_z_down/status");
+    auto_declare<double>("status_publish_rate_hz", 20.0);
   } catch (const std::exception& e) {
     RCLCPP_ERROR(get_node()->get_logger(), "Exception thrown during init stage: %s", e.what());
     return CallbackReturn::ERROR;
@@ -265,6 +332,8 @@ CallbackReturn JointImpedanceForceZDownController::on_configure(
   max_torque_xyz_ = get_node()->get_parameter("max_torque_xyz").as_double();
   max_joint_torque_ = get_node()->get_parameter("max_joint_torque").as_double();
   max_delta_tau_ = get_node()->get_parameter("max_delta_tau").as_double();
+  status_topic_ = get_node()->get_parameter("status_topic").as_string();
+  status_publish_rate_hz_ = get_node()->get_parameter("status_publish_rate_hz").as_double();
 
   franka_robot_model_ = std::make_unique<franka_semantic_components::FrankaRobotModel>(
       arm_prefix_ + robot_type_ + "/" + k_robot_model_interface_name,
@@ -299,6 +368,10 @@ CallbackReturn JointImpedanceForceZDownController::on_activate(
   update_joint_states();
   q_nullspace_target_ = q_;
   tau_previous_ = Eigen::Map<const Vector7d>(robot_state_ptr_->tau_J_d.data());
+  status_publish_accumulator_ = 0.0;
+
+  status_publisher_ =
+      get_node()->create_publisher<std_msgs::msg::Float64MultiArray>(status_topic_, 10);
 
   initialized_ = false;
   initialize_targets();

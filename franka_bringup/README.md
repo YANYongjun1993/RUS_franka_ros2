@@ -19,3 +19,29 @@ colcon test --packages-select franka_bringup --event-handlers console_direct+
 # to inspect the results
 colcon test-result --all --verbose
 ```
+
+## Surface-Contact Example Profile (Conservative)
+
+For initial contact-force experiments on flat surfaces, use the conservative profile:
+
+```bash
+ros2 launch franka_bringup example.launch.py controller_names:=joint_impedance_force_z_down_surface_controller
+```
+
+This profile configures the controller with reduced stiffness/torque limits and lower admittance speed
+for safer first tests. Parameters are defined in `config/controllers.yaml` under
+`joint_impedance_force_z_down_surface_controller`.
+
+### Runtime status topic
+
+The controller publishes runtime tuning/safety status as `std_msgs/msg/Float64MultiArray` on:
+
+```bash
+/joint_impedance_force_z_down/surface_status
+```
+
+You can inspect it with:
+
+```bash
+ros2 topic echo /joint_impedance_force_z_down/surface_status
+```

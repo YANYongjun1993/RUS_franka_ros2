@@ -69,6 +69,9 @@
       joint_impedance_force_z_down_controller:
         type: franka_example_controllers/JointImpedanceForceZDownController
 
+      joint_impedance_force_z_down_surface_controller:
+        type: franka_example_controllers/JointImpedanceForceZDownController
+
       joint_impedance_with_ik_example_controller:
         type: franka_example_controllers/JointImpedanceWithIKExampleController
 
@@ -173,6 +176,47 @@
       max_torque_xyz: 20.0
       max_joint_torque: 80.0
       max_delta_tau: 1.0
+      status_topic: joint_impedance_force_z_down/status
+      status_publish_rate_hz: 20.0
+
+/**:
+  joint_impedance_force_z_down_surface_controller:
+    ros__parameters:
+      # Conservative profile for stable initial surface-contact experiments.
+      translational_stiffness:
+        x: 8.0
+        y: 8.0
+        z: 260.0
+      translational_damping:
+        x: 45.0
+        y: 45.0
+        z: 95.0
+      rotational_stiffness:
+        x: 22.0
+        y: 22.0
+        z: 22.0
+      rotational_damping:
+        x: 7.5
+        y: 7.5
+        z: 7.5
+
+      force_z_desired_down: 5.0
+      force_filter_cutoff_hz: 15.0
+      admittance_gain: 0.00012
+      vz_max: 0.012
+      z_max: 0.012
+
+      nullspace_stiffness: 12.0
+      nullspace_damping: 3.5
+
+      max_force_xy: 20.0
+      max_force_z: 45.0
+      max_torque_xyz: 12.0
+      max_joint_torque: 50.0
+      max_delta_tau: 0.6
+
+      status_topic: joint_impedance_force_z_down/surface_status
+      status_publish_rate_hz: 20.0
 
 /**:
   move_to_start_example_controller:

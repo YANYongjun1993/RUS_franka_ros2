@@ -22,6 +22,7 @@
 #include <controller_interface/controller_interface.hpp>
 #include <franka/robot_state.h>
 #include <rclcpp/rclcpp.hpp>
+#include <std_msgs/msg/float64_multi_array.hpp>
 
 #include "franka_semantic_components/franka_robot_model.hpp"
 
@@ -119,6 +120,12 @@ class JointImpedanceForceZDownController : public controller_interface::Controll
   double max_torque_xyz_{20.0};
   double max_joint_torque_{80.0};
   double max_delta_tau_{1.0};
+
+    // Runtime status publisher for tuning/monitoring.
+    std::string status_topic_{"joint_impedance_force_z_down/status"};
+    double status_publish_rate_hz_{20.0};
+    double status_publish_accumulator_{0.0};
+    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr status_publisher_;
 
   bool initialized_{false};
 };
