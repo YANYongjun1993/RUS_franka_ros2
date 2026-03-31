@@ -33,26 +33,28 @@ namespace franka_example_controllers {
 /**
  * Ultrasound Scanning Impedance Controller
  *
- * Cartesian impedance controller for robotic ultrasound scanning with two phases:
+ * Cartesian impedance controller for robotic ultrasound scanning with two phases.
+ * Both translational and rotational control are defined in the flange/probe frame.
  *
- * Phase 1 – Force Control & Planar Compliance (Translation)
- *   • Z-axis:  Constant contact force regulation via outer-loop admittance
- *              (F_z,des = 5 N downward, gravity-compensated).
- *   • X/Y:    Near-zero stiffness with moderate damping for operator hand-guiding.
+ * Phase 1 – Force Control & Planar Compliance (Translation, flange frame)
+ *   • Normal (flange Z): Constant contact force regulation via outer-loop admittance
+ *                        (F_normal_des = 5 N pressing into tissue).
+ *   • Tangent (flange X/Y): Near-zero stiffness with moderate damping for
+ *                           operator hand-guiding across the patient surface.
  *
  * Phase 2 – Selective Rotational Compliance (Orientation, flange frame)
  *   • Roll  (flange X): Free – near-zero stiffness to adapt probe to body curvature.
  *   • Pitch (flange Y): Locked to initial orientation at activation.
  *   • Yaw   (flange Z): Locked to initial orientation to prevent spinning.
  *
- * Stiffness matrix K = diag(K_x, K_y, K_z, K_rx, K_ry, K_rz)
+ * Stiffness matrix K = diag(K_tx, K_ty, K_tn, K_rx, K_ry, K_rz)  [flange frame]
  *   Defaults: (0, 0, 400, 0, 30, 30)
  *
- * Damping matrix D = diag(D_x, D_y, D_z, D_rx, D_ry, D_rz)
+ * Damping matrix D = diag(D_tx, D_ty, D_tn, D_rx, D_ry, D_rz)  [flange frame]
  *   Defaults: (10, 10, 70, 1, 6, 6)
  *
- * The rotational stiffness/damping are applied in the flange frame so that the
- * free-roll axis travels with the end-effector.
+ * All translational and rotational stiffness/damping are applied in the flange
+ * frame and rotated back to the world frame before the J^T torque mapping.
  */
 class UltrasoundScanningImpedanceController : public controller_interface::ControllerInterface {
  public:
@@ -98,12 +100,12 @@ class UltrasoundScanningImpedanceController : public controller_interface::Contr
   Matrix6x7d jacobian_{};
   Eigen::Matrix3d rotation_initial_{Eigen::Matrix3d::Identity()};
 
-  // Admittance state for Z-axis force control (downward-positive convention).
-  double down_pos_initial_{0.0};
-  double down_pos_desired_{0.0};
+  // Admittance state for normal-axis force control (flange +Z, pressing-positive).
+  double normal_pos_initial_{0.0};
+  double normal_pos_desired_{0.0};
 
-  // Low-pass filtered external force along world -Z (downward-positive).
-  double force_down_filtered_{0.0};
+  // Low-pass filtered external force along flange +Z (pressing-positive).
+  double force_normal_filtered_{0.0};
 
   franka::RobotState* robot_state_ptr_{nullptr};
   std::size_t robot_state_interface_index_{0};
@@ -113,8 +115,9 @@ class UltrasoundScanningImpedanceController : public controller_interface::Contr
   const std::string k_robot_state_interface_name{"robot_state"};
   const std::string k_robot_model_interface_name{"robot_model"};
 
-  // --- Phase 1: Translational gains ---
-  // X/Y near-zero stiffness for hand-guiding; Z stiffness for admittance loop.
+  // --- Phase 1: Translational gains (flange frame) ---
+  // Tangent (flange X/Y): near-zero stiffness for hand-guiding.
+  // Normal  (flange Z):   high stiffness for admittance force-tracking loop.
   Vector3d translational_stiffness_{0.0, 0.0, 400.0};
   Vector3d translational_damping_{10.0, 10.0, 70.0};
 
@@ -124,11 +127,11 @@ class UltrasoundScanningImpedanceController : public controller_interface::Contr
   Vector3d rotational_damping_{1.0, 6.0, 6.0};
 
   // --- Force control / admittance parameters ---
-  double force_z_desired_down_{5.0};   // Desired contact force [N] (downward positive)
+  double force_normal_desired_{5.0};   // Desired normal contact force [N] (pressing-positive)
   double force_filter_cutoff_hz_{20.0};
   double admittance_gain_{2e-4};       // m/s per N of force error
-  double vz_max_{0.02};               // Max admittance velocity [m/s]
-  double z_max_{0.02};                // Max admittance displacement [m]
+  double normal_v_max_{0.02};          // Max admittance velocity [m/s]
+  double normal_max_disp_{0.02};       // Max admittance displacement [m]
 
   // --- Nullspace stabilization ---
   double nullspace_stiffness_{15.0};

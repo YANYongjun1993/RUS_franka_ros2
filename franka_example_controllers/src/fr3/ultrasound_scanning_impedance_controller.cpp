@@ -119,33 +119,47 @@ controller_interface::return_type UltrasoundScanningImpedanceController::update(
   const Vector3d angular_velocity = cartesian_velocity.tail<3>();
 
   // ===========================================================================
-  // Phase 1: Z-axis force control via admittance + X/Y planar compliance
+  // Phase 1: Normal-force control + tangent-plane compliance (flange frame)
   // ===========================================================================
 
-  // External wrench in world frame; convert to downward-positive scalar.
-  const double force_down_measured = -robot_state_ptr_->O_F_ext_hat_K[2];
+  // ---- Transform measured external force into the flange frame ----
+  // O_F_ext_hat_K is the estimated external wrench in the world/base frame.
+  const Eigen::Vector3d ext_force_world(robot_state_ptr_->O_F_ext_hat_K[0],
+                                        robot_state_ptr_->O_F_ext_hat_K[1],
+                                        robot_state_ptr_->O_F_ext_hat_K[2]);
+  const Eigen::Vector3d ext_force_flange = rotation.transpose() * ext_force_world;
+
+  // Normal force along flange +Z (pressing-positive: probe into tissue).
+  const double force_normal_measured = ext_force_flange.z();
   const double dt = period.seconds();
 
-  // First-order low-pass filter on measured force.
+  // First-order low-pass filter on measured normal force.
   const double tau_filter = 1.0 / (2.0 * M_PI * std::max(1e-3, force_filter_cutoff_hz_));
   const double alpha = dt / (tau_filter + dt);
-  force_down_filtered_ += alpha * (force_down_measured - force_down_filtered_);
+  force_normal_filtered_ += alpha * (force_normal_measured - force_normal_filtered_);
 
-  // Admittance outer loop: adjust desired Z position to track F_z,des.
-  //   x_z_delta = K_z^{-1} * (F_z_meas - F_z_des)   (conceptually)
+  // ---- Admittance outer loop along flange normal ----
+  // Conceptually:  x_normal_delta = K_normal^{-1} * (F_normal_meas - F_normal_des)
   // Implemented as velocity-level admittance for smooth transitions:
-  const double force_error = force_z_desired_down_ - force_down_filtered_;
-  const double down_velocity =
-      clamp_abs(admittance_gain_ * force_error, std::max(1e-6, vz_max_));
-  down_pos_desired_ += dt * down_velocity;
-  down_pos_desired_ =
-      std::clamp(down_pos_desired_, down_pos_initial_ - z_max_, down_pos_initial_ + z_max_);
+  const double force_error = force_normal_desired_ - force_normal_filtered_;
+  const double normal_velocity =
+      clamp_abs(admittance_gain_ * force_error, std::max(1e-6, normal_v_max_));
+  normal_pos_desired_ += dt * normal_velocity;
+  normal_pos_desired_ = std::clamp(normal_pos_desired_,
+                                   normal_pos_initial_ - normal_max_disp_,
+                                   normal_pos_initial_ + normal_max_disp_);
 
-  // Update the desired position (only Z moves via admittance; X/Y track initial).
-  position_desired_.z() = -down_pos_desired_;
+  // ---- Position error in flange frame ----
+  // World-frame position error, then project into flange frame.
+  const Vector3d position_error_world = position_desired_ - position;
+  Vector3d position_error_flange = rotation.transpose() * position_error_world;
 
-  // Translational position error (world frame).
-  const Vector3d position_error = position_desired_ - position;
+  // Override the normal component with the admittance-driven reference.
+  // normal_pos_desired_ is the desired offset along flange +Z from initial.
+  position_error_flange.z() = normal_pos_desired_ - normal_pos_initial_;
+
+  // ---- Linear velocity in flange frame ----
+  const Vector3d linear_velocity_flange = rotation.transpose() * linear_velocity;
 
   // ===========================================================================
   // Phase 2: Orientation control with selective compliance in flange frame
@@ -177,12 +191,15 @@ controller_interface::return_type UltrasoundScanningImpedanceController::update(
   // Assemble Cartesian wrench
   // ===========================================================================
 
-  // Translational force command (world frame).
-  // X/Y: K ≈ 0 → only damping acts → operator can drag freely.
-  // Z: High K drives the admittance-adjusted reference tracking.
-  Vector3d force_command =
-      translational_stiffness_.cwiseProduct(position_error) -
-      translational_damping_.cwiseProduct(linear_velocity);
+  // Translational force command in flange frame.
+  // Tangent (X/Y): K ≈ 0 → only damping acts → operator can drag freely.
+  // Normal  (Z):   High K drives the admittance-adjusted reference tracking.
+  const Vector3d force_command_flange =
+      translational_stiffness_.cwiseProduct(position_error_flange) -
+      translational_damping_.cwiseProduct(linear_velocity_flange);
+
+  // Rotate the translational force command from flange frame to world frame.
+  Vector3d force_command = rotation * force_command_flange;
 
   Vector3d torque_command = torque_command_world;
 
@@ -263,44 +280,46 @@ controller_interface::return_type UltrasoundScanningImpedanceController::update(
     if (status_publish_accumulator_ >= status_period) {
       status_publish_accumulator_ -= status_period;
       std_msgs::msg::Float64MultiArray msg;
-      // Layout:
-      //  [0]  force_down_filtered        [N, down positive]
-      //  [1]  force_z_desired_down       [N]
-      //  [2]  force_error                [N]
-      //  [3]  admittance_displacement    [m]  (down_pos_desired - down_pos_initial)
-      //  [4]  position_error.x           [m]
-      //  [5]  position_error.y           [m]
-      //  [6]  position_error.z           [m]
-      //  [7]  orientation_error_flange.x [rad] (roll – should be ≈ free)
-      //  [8]  orientation_error_flange.y [rad] (pitch – locked)
-      //  [9]  orientation_error_flange.z [rad] (yaw – locked)
-      // [10]  force_command.x            [N]
-      // [11]  force_command.y            [N]
-      // [12]  force_command.z            [N]
-      // [13]  torque_command.x           [Nm]
-      // [14]  torque_command.y           [Nm]
-      // [15]  torque_command.z           [Nm]
-      // [16]  tau_task_norm              [Nm]
-      // [17]  tau_nullspace_norm         [Nm]
-      // [18]  tau_command_norm           [Nm]
-      // [19]  force saturation flag      [0/1]
-      // [20]  rotational torque sat flag [0/1]
-      // [21]  joint torque sat flag      [0/1]
-      // [22]  torque-rate sat flag       [0/1]
+      // Layout (all translational quantities in flange frame):
+      //  [0]  force_normal_filtered       [N, pressing-positive]
+      //  [1]  force_normal_desired        [N]
+      //  [2]  force_error                 [N]  (desired - measured)
+      //  [3]  normal_admittance_disp      [m]  (normal_pos_desired - normal_pos_initial)
+      //  [4]  normal_admittance_vel       [m/s]
+      //  [5]  position_error_flange.x     [m]  (tangent)
+      //  [6]  position_error_flange.y     [m]  (tangent)
+      //  [7]  position_error_flange.z     [m]  (normal, admittance-driven)
+      //  [8]  force_cmd_flange.x          [N]  (tangent force command)
+      //  [9]  force_cmd_flange.y          [N]  (tangent force command)
+      // [10]  force_cmd_flange.z          [N]  (normal force command)
+      // [11]  orientation_error_flange.x  [rad] (roll – should be ≈ free)
+      // [12]  orientation_error_flange.y  [rad] (pitch – locked)
+      // [13]  orientation_error_flange.z  [rad] (yaw – locked)
+      // [14]  torque_command.x            [Nm]  (world frame, after R mapping)
+      // [15]  torque_command.y            [Nm]
+      // [16]  torque_command.z            [Nm]
+      // [17]  tau_task_norm               [Nm]
+      // [18]  tau_nullspace_norm          [Nm]
+      // [19]  tau_command_norm            [Nm]
+      // [20]  force saturation flag       [0/1]
+      // [21]  rotational torque sat flag  [0/1]
+      // [22]  joint torque sat flag       [0/1]
+      // [23]  torque-rate sat flag        [0/1]
       msg.data = {
-          force_down_filtered_,
-          force_z_desired_down_,
+          force_normal_filtered_,
+          force_normal_desired_,
           force_error,
-          down_pos_desired_ - down_pos_initial_,
-          position_error.x(),
-          position_error.y(),
-          position_error.z(),
+          normal_pos_desired_ - normal_pos_initial_,
+          normal_velocity,
+          position_error_flange.x(),
+          position_error_flange.y(),
+          position_error_flange.z(),
+          force_command_flange.x(),
+          force_command_flange.y(),
+          force_command_flange.z(),
           orientation_error_flange.x(),
           orientation_error_flange.y(),
           orientation_error_flange.z(),
-          force_command.x(),
-          force_command.y(),
-          force_command.z(),
           torque_command.x(),
           torque_command.y(),
           torque_command.z(),
@@ -328,7 +347,7 @@ CallbackReturn UltrasoundScanningImpedanceController::on_init() {
     auto_declare<std::string>("robot_type", "fr3");
     auto_declare<std::string>("arm_prefix", "");
 
-    // Phase 1 – translational gains
+    // Phase 1 – translational gains (flange frame: X/Y = tangent, Z = normal)
     auto_declare<double>("translational_stiffness.x", 0.0);
     auto_declare<double>("translational_stiffness.y", 0.0);
     auto_declare<double>("translational_stiffness.z", 400.0);
@@ -346,12 +365,12 @@ CallbackReturn UltrasoundScanningImpedanceController::on_init() {
     auto_declare<double>("rotational_damping.y", 6.0);
     auto_declare<double>("rotational_damping.z", 6.0);
 
-    // Force control / admittance
-    auto_declare<double>("force_z_desired_down", 5.0);
+    // Normal-force control / admittance (flange +Z, pressing-positive)
+    auto_declare<double>("force_normal_desired", 5.0);
     auto_declare<double>("force_filter_cutoff_hz", 20.0);
     auto_declare<double>("admittance_gain", 2e-4);
-    auto_declare<double>("vz_max", 0.02);
-    auto_declare<double>("z_max", 0.02);
+    auto_declare<double>("normal_v_max", 0.02);
+    auto_declare<double>("normal_max_disp", 0.02);
 
     // Nullspace
     auto_declare<double>("nullspace_stiffness", 15.0);
@@ -402,12 +421,12 @@ CallbackReturn UltrasoundScanningImpedanceController::on_configure(
   rotational_damping_.y() = get_node()->get_parameter("rotational_damping.y").as_double();
   rotational_damping_.z() = get_node()->get_parameter("rotational_damping.z").as_double();
 
-  // Force control
-  force_z_desired_down_ = get_node()->get_parameter("force_z_desired_down").as_double();
+  // Normal-force control
+  force_normal_desired_ = get_node()->get_parameter("force_normal_desired").as_double();
   force_filter_cutoff_hz_ = get_node()->get_parameter("force_filter_cutoff_hz").as_double();
   admittance_gain_ = get_node()->get_parameter("admittance_gain").as_double();
-  vz_max_ = get_node()->get_parameter("vz_max").as_double();
-  z_max_ = get_node()->get_parameter("z_max").as_double();
+  normal_v_max_ = get_node()->get_parameter("normal_v_max").as_double();
+  normal_max_disp_ = get_node()->get_parameter("normal_max_disp").as_double();
 
   // Nullspace
   nullspace_stiffness_ = get_node()->get_parameter("nullspace_stiffness").as_double();
@@ -504,16 +523,22 @@ void UltrasoundScanningImpedanceController::initialize_targets() {
 
   position_initial_ = flange_pose.block<3, 1>(0, 3);
   position_desired_ = position_initial_;
-  down_pos_initial_ = -position_initial_.z();
-  down_pos_desired_ = down_pos_initial_;
 
   // Capture the initial orientation of the flange.
   // Roll (flange X) will be free; pitch (flange Y) and yaw (flange Z) will
   // be regulated back to this initial orientation.
   rotation_initial_ = flange_pose.block<3, 3>(0, 0);
 
-  // Initialize force filter with current measured downward force.
-  force_down_filtered_ = -robot_state_ptr_->O_F_ext_hat_K[2];
+  // Initialize admittance state at zero displacement along the flange normal.
+  normal_pos_initial_ = 0.0;
+  normal_pos_desired_ = 0.0;
+
+  // Initialize force filter with current measured normal force in flange frame.
+  const Eigen::Vector3d ext_force_world_init(
+      robot_state_ptr_->O_F_ext_hat_K[0],
+      robot_state_ptr_->O_F_ext_hat_K[1],
+      robot_state_ptr_->O_F_ext_hat_K[2]);
+  force_normal_filtered_ = (rotation_initial_.transpose() * ext_force_world_init).z();
 }
 
 UltrasoundScanningImpedanceController::Vector7d
