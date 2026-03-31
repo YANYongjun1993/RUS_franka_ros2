@@ -1,0 +1,63 @@
+# Ultrasound Scanning Impedance Controller – parameter file
+#
+# Stiffness matrix K = diag(K_x, K_y, K_z, K_rx, K_ry, K_rz)
+# Damping   matrix D = diag(D_x, D_y, D_z, D_rx, D_ry, D_rz)
+#
+# Phase 1 – Translation
+#   X/Y: Near-zero stiffness + moderate damping → operator hand-guiding
+#   Z:   High stiffness used by the admittance loop for constant-force contact
+#
+# Phase 2 – Rotation (gains applied in the flange frame)
+#   Roll  (X): Free  → probe adapts to body curvature
+#   Pitch (Y): Locked → initial orientation preserved
+#   Yaw   (Z): Locked → prevents probe spinning during drag
+
+/**:
+  ultrasound_scanning_impedance_controller:
+    ros__parameters:
+      robot_type: fr3
+      arm_prefix: ""
+
+      # ---- Phase 1: Translational gains ----
+      translational_stiffness:
+        x: 0.0      # [N/m]  free hand-guiding
+        y: 0.0      # [N/m]  free hand-guiding
+        z: 400.0    # [N/m]  admittance loop reference tracking
+
+      translational_damping:
+        x: 10.0     # [N·s/m]  moderate damping for smooth drag
+        y: 10.0     # [N·s/m]
+        z: 70.0     # [N·s/m]  high damping for Z stability
+
+      # ---- Phase 2: Rotational gains (flange frame) ----
+      rotational_stiffness:
+        x: 0.0      # [Nm/rad]  free roll
+        y: 30.0     # [Nm/rad]  locked pitch
+        z: 30.0     # [Nm/rad]  locked yaw
+
+      rotational_damping:
+        x: 1.0      # [Nm·s/rad]  light roll damping
+        y: 6.0      # [Nm·s/rad]
+        z: 6.0      # [Nm·s/rad]
+
+      # ---- Z-axis force control (admittance) ----
+      force_z_desired_down: 5.0       # [N]  desired contact force (downward positive)
+      force_filter_cutoff_hz: 20.0    # [Hz] low-pass filter cutoff on measured force
+      admittance_gain: 0.0002         # [m/s / N]  velocity per unit force error
+      vz_max: 0.02                    # [m/s]  max admittance velocity
+      z_max: 0.02                     # [m]    max admittance displacement
+
+      # ---- Nullspace stabilization ----
+      nullspace_stiffness: 15.0       # [Nm/rad]
+      nullspace_damping: 3.0          # [Nm·s/rad]
+
+      # ---- Safety limits ----
+      max_force_xy: 30.0              # [N]
+      max_force_z: 80.0               # [N]
+      max_torque_xyz: 20.0            # [Nm]
+      max_joint_torque: 80.0          # [Nm]
+      max_delta_tau: 1.0              # [Nm]  per-cycle torque rate limit
+
+      # ---- Monitoring ----
+      status_topic: "ultrasound_scanning_impedance/status"
+      status_publish_rate_hz: 20.0    # [Hz]

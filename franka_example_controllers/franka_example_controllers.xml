@@ -90,6 +90,13 @@
             The mobile cartesian velocity example controller fowards cartesian velocity commands to the mobile robot.
         </description>
     </class>
+    <class name="franka_example_controllers/UltrasoundScanningImpedanceController"
+        type="franka_example_controllers::UltrasoundScanningImpedanceController"
+        base_class_type="controller_interface::ControllerInterface">
+        <description>
+            Cartesian impedance controller for robotic ultrasound scanning: Z-axis force control, X/Y hand-guiding, free roll, fixed pitch/yaw.
+        </description>
+    </class>
     <class name="franka_example_controllers/MobileCartesianVelocityWithIkExampleController"
         type="franka_example_controllers::MobileCartesianVelocityWithIkExampleController"
         base_class_type="controller_interface::ControllerInterface">

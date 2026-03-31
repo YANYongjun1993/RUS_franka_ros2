@@ -93,6 +93,9 @@
       mobile_cartesian_velocity_example_controller:
         type: franka_example_controllers/MobileCartesianVelocityExampleController
 
+      ultrasound_scanning_impedance_controller:
+        type: franka_example_controllers/UltrasoundScanningImpedanceController
+
 /**:
   franka_robot_state_broadcaster:
     ros__parameters:
