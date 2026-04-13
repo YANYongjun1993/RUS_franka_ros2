@@ -240,3 +240,29 @@
         - 10.0
         - 10.0
         - 5.0
+
+/**:
+  ultrasound_scanning_impedance_controller:
+    ros__parameters:
+      force_normal_desired: 15.0
+      force_filter_cutoff_hz: 20.0
+      admittance_gain: 0.0002
+      normal_v_max: 0.02
+      normal_max_disp: 0.02
+
+      translational_stiffness:
+        x: 0.0
+        y: 0.0
+        z: 500.0
+      translational_damping:
+        x: 5.0
+        y: 5.0
+        z: 70.0
+      rotational_stiffness:
+        x: 0.0
+        y: 20.0
+        z: 20.0
+      rotational_damping:
+        x: 0.5
+        y: 5.0
+        z: 5.0
