@@ -37,7 +37,7 @@ def generate_launch_description():
                 ])
             ),
             launch_arguments={
-                'controller_name': 'ultrasound_scanning_impedance_controller',
+                'controller_names': 'ultrasound_scanning_impedance_controller',
             }.items(),
         ),
     ])
