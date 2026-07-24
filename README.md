@@ -131,6 +131,16 @@ All parameters are loaded from YAML configuration. Default values are shown belo
 
 ## Usage
 
+### Clone the latests dependencies
+```bash
+vcs import src < src/dependency.repos --recursive --skip-existing
+```
+
+### Build the workspace
+```bash
+colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
+```
+
 ### Launch
 
 ```bash
