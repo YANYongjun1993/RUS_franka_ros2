@@ -7,6 +7,9 @@ on:
 jobs:
   CI:
     runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      pull-requests: write
     steps:
       - name: Prepare
         run: |
@@ -59,7 +62,7 @@ jobs:
           path: build/*/test_results/*/*.xml
 
       - name: Publish Unit Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v1
+        uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
         with:
           files: build/*/test_results/*/*.xml

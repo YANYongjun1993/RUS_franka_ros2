@@ -82,7 +82,7 @@ class UltrasoundScanningImpedanceController : public controller_interface::Contr
   bool read_robot_state_pointer();
   void initialize_targets();
 
-  Vector7d saturate_torque_rate(const Vector7d& tau_desired) const;
+  [[nodiscard]] Vector7d saturate_torque_rate(const Vector7d& tau_desired) const;
 
   std::string robot_type_;
   std::string arm_prefix_;
