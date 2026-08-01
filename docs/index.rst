@@ -9,7 +9,6 @@ franka_ros2
    ../franka_hardware/doc/index
    ../franka_semantic_components/doc/index
    ../franka_robot_state_broadcaster/doc/index
-   ../franka_mobile_sensors/doc/index
    ../franka_fr3_moveit_config/doc/index
    ../franka_gazebo_bringup/doc/index
    ../franka_msgs/doc/index
