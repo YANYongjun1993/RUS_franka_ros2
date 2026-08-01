@@ -41,14 +41,12 @@ def load_yaml(package_name, file_path, prefix=None):
 
 def generate_robot_nodes(context, *args, **kwargs):
     robot_ip_parameter_name = 'robot_ip'
-    load_gripper_parameter_name = 'load_gripper'
     use_fake_hardware_parameter_name = 'use_fake_hardware'
     fake_sensor_commands_parameter_name = 'fake_sensor_commands'
     namespace_parameter_name = 'namespace'
     arm_prefix_parameter_name = 'arm_prefix'
 
     robot_ip = LaunchConfiguration(robot_ip_parameter_name)
-    load_gripper = LaunchConfiguration(load_gripper_parameter_name)
     use_fake_hardware = LaunchConfiguration(use_fake_hardware_parameter_name)
     fake_sensor_commands = LaunchConfiguration(
         fake_sensor_commands_parameter_name)
@@ -68,7 +66,8 @@ def generate_robot_nodes(context, *args, **kwargs):
             ' ',
             franka_xacro_file,
             ' ros2_control:=false',
-            ' hand:=', load_gripper,
+            ' hand:=false',
+            ' ee_id:=none',
             ' robot_type:=fr3',
             ' arm_prefix:=', arm_prefix,
             ' robot_ip:=', robot_ip,
@@ -90,7 +89,8 @@ def generate_robot_nodes(context, *args, **kwargs):
             FindExecutable(name='xacro'),
             ' ',
             franka_semantic_xacro_file,
-            ' hand:=', load_gripper,
+            ' hand:=false',
+            ' ee_id:=none',
             ' arm_prefix:=', arm_prefix,
         ]
     )

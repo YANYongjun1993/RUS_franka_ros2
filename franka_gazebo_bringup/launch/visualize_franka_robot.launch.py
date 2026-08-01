@@ -31,10 +31,8 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
-def get_robot_description(context: LaunchContext, robot_type, load_gripper, franka_hand):
+def get_robot_description(context: LaunchContext, robot_type):
     robot_type_str = context.perform_substitution(robot_type)
-    load_gripper_str = context.perform_substitution(load_gripper)
-    franka_hand_str = context.perform_substitution(franka_hand)
 
     franka_xacro_file = os.path.join(
         get_package_share_directory('franka_description'),
@@ -47,10 +45,10 @@ def get_robot_description(context: LaunchContext, robot_type, load_gripper, fran
         franka_xacro_file,
         mappings={
             'robot_type': robot_type_str,
-            'hand': load_gripper_str,
+            'hand': 'false',
             'ros2_control': 'true',
             'gazebo': 'true',
-            'ee_id': franka_hand_str
+            'ee_id': 'none'
         }
     )
 
@@ -71,24 +69,12 @@ def get_robot_description(context: LaunchContext, robot_type, load_gripper, fran
 
 def generate_launch_description():
     # Configure ROS nodes for launch
-    load_gripper_name = 'load_gripper'
-    franka_hand_name = 'franka_hand'
     robot_type_name = 'robot_type'
     namespace_name = 'namespace'
 
-    load_gripper = LaunchConfiguration(load_gripper_name)
-    franka_hand = LaunchConfiguration(franka_hand_name)
     robot_type = LaunchConfiguration(robot_type_name)
     namespace = LaunchConfiguration(namespace_name)
 
-    load_gripper_launch_argument = DeclareLaunchArgument(
-        load_gripper_name,
-        default_value='false',
-        description='true/false for activating the gripper')
-    franka_hand_launch_argument = DeclareLaunchArgument(
-        franka_hand_name,
-        default_value='franka_hand',
-        description='Default value: franka_hand')
     robot_type_launch_argument = DeclareLaunchArgument(
         robot_type_name,
         default_value='fr3',
@@ -101,7 +87,7 @@ def generate_launch_description():
     # Get robot description
     robot_state_publisher = OpaqueFunction(
         function=get_robot_description,
-        args=[robot_type, load_gripper, franka_hand])
+        args=[robot_type])
 
     # Gazebo Sim
     os.environ['GZ_SIM_RESOURCE_PATH'] = os.path.dirname(
@@ -140,8 +126,6 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        load_gripper_launch_argument,
-        franka_hand_launch_argument,
         robot_type_launch_argument,
         namespace_launch_argument,
         gazebo_empty_world,

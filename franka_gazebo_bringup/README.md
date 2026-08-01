@@ -10,5 +10,5 @@ Launch RViz and Gazebo with:
 ros2 launch franka_gazebo_bringup visualize_franka_robot.launch.py
 ```
 
-Select another robot type with the `robot_type` argument, or enable the hand
-with `load_gripper:=true franka_hand:=franka_hand`.
+Select another robot type with the `robot_type` argument. The visualization is
+configured without a hand, matching the flange-mounted ultrasound probe.

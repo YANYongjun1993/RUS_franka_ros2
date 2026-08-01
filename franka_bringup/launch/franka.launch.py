@@ -18,7 +18,6 @@
 # arm_prefix: Prefix for arm topics (default: '')
 # namespace: Namespace for the robot (default: '')
 # robot_ip: Hostname or IP address of the robot (default: '172.16.0.3')
-# load_gripper: Use Franka Gripper as an end-effector (default: 'false')
 # use_fake_hardware: Use fake hardware (default: 'false')
 # fake_sensor_commands: Fake sensor commands (default: 'false')
 # joint_state_rate: Rate for joint state publishing in Hz (default: '30')
@@ -26,8 +25,8 @@
 # The franka.launch.py launch file provides a robust and flexible interface
 # for launching core Franka Robotics components, including robot_state_publisher,
 # ros2_control_node, joint_state_publisher, joint_state_broadcaster,
-# franka_robot_state_broadcaster, and optionally franka_gripper, with support
-# for both namespaced and non-namespaced environments.
+# franka_robot_state_broadcaster, with support for both namespaced and
+# non-namespaced environments.
 # Example:
 # ros2 launch franka_bringup franka.launch.py robot_type:=fr3 namespace:=NS1 robot_ip:=172.16.0.3
 
@@ -70,10 +69,9 @@
 
 import xacro
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument
 from launch.actions import OpaqueFunction, Shutdown
-from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.conditions import UnlessCondition, IfCondition
+from launch.conditions import UnlessCondition
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
@@ -84,10 +82,6 @@ from launch_ros.substitutions import FindPackageShare
 
 
 def generate_robot_nodes(context):
-    load_gripper_launch_configuration = LaunchConfiguration('load_gripper').perform(
-        context
-    )
-    load_gripper = load_gripper_launch_configuration.lower() == 'true'
     robot_type = LaunchConfiguration('robot_type').perform(context)
     arm_prefix = LaunchConfiguration('arm_prefix').perform(context)
     urdf_path = PathJoinSubstitution(
@@ -105,7 +99,8 @@ def generate_robot_nodes(context):
             'robot_type': LaunchConfiguration('robot_type').perform(context),
             'arm_prefix': LaunchConfiguration('arm_prefix').perform(context),
             'robot_ip': LaunchConfiguration('robot_ip').perform(context),
-            'hand': load_gripper_launch_configuration,
+            'hand': 'false',
+            'ee_id': 'none',
             'use_fake_hardware': LaunchConfiguration('use_fake_hardware').perform(
                 context
             ),
@@ -119,10 +114,7 @@ def generate_robot_nodes(context):
 
     controllers_yaml = LaunchConfiguration('controllers_yaml').perform(context)
 
-    joint_state_publisher_sources = [
-        'franka/joint_states',
-        'franka_gripper/joint_states',
-    ]
+    joint_state_publisher_sources = ['franka/joint_states']
     joint_state_rate = int(LaunchConfiguration('joint_state_rate').perform(context))
 
     nodes = [
@@ -141,7 +133,6 @@ def generate_robot_nodes(context):
                 controllers_yaml,
                 {'robot_description': robot_description},
                 {'robot_type': robot_type},
-                {'load_gripper': load_gripper},
                 {'arm_prefix': arm_prefix},
             ],
             remappings=[('joint_states', joint_state_publisher_sources[0])],
@@ -177,27 +168,6 @@ def generate_robot_nodes(context):
             condition=UnlessCondition(LaunchConfiguration('use_fake_hardware')),
             output='screen',
         ),
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(
-                [
-                    PathJoinSubstitution(
-                        [
-                            FindPackageShare('franka_gripper'),
-                            'launch',
-                            'gripper.launch.py',
-                        ]
-                    )
-                ]
-            ),
-            launch_arguments={
-                'namespace': namespace,
-                'robot_ip': LaunchConfiguration('robot_ip').perform(context),
-                'use_fake_hardware': LaunchConfiguration('use_fake_hardware').perform(
-                    context
-                ),
-            }.items(),
-            condition=IfCondition(LaunchConfiguration('load_gripper')),
-        ),
     ]
 
     return nodes
@@ -222,11 +192,6 @@ def generate_launch_description():
             'robot_ip',
             default_value='172.16.0.3',
             description='Hostname or IP address of the robot',
-        ),
-        DeclareLaunchArgument(
-            'load_gripper',
-            default_value='false',
-            description='Use Franka Gripper as an end-effector',
         ),
         DeclareLaunchArgument(
             'use_fake_hardware', default_value='false', description='Use fake hardware'

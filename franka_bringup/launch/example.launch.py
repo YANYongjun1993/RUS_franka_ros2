@@ -26,9 +26,9 @@
 #
 # This script "includes" franka.launch.py to declare core component nodes,
 # including: robot_state_publisher, ros2_control_node, joint_state_publisher,
-# joint_state_broadcaster, franka_robot_state_broadcaster, and optionally
-# franka_gripper and rviz, with support for namespaced and non-namespaced
-# environments as defined in franka.config.yaml. RViz is launched if
+# joint_state_broadcaster, franka_robot_state_broadcaster, and optionally RViz,
+# with support for namespaced and non-namespaced environments as defined in
+# franka.config.yaml. RViz is launched if
 # 'use_rviz' is set to true in the configuration file.
 #
 # The default robot_config_file is franka.config.yaml in the
@@ -108,7 +108,6 @@ def generate_robot_nodes(context):
                     'arm_prefix': str(config['arm_prefix']),
                     'namespace': str(namespace),
                     'robot_ip': robot_ip,
-                    'load_gripper': str(config['load_gripper']),
                     'use_fake_hardware': str(config['use_fake_hardware']),
                     'fake_sensor_commands': str(
                         config['fake_sensor_commands']

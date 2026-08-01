@@ -22,11 +22,9 @@ from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
     ExecuteProcess,
-    IncludeLaunchDescription,
     Shutdown
 )
 from launch.conditions import UnlessCondition
-from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import (
     Command,
     FindExecutable,
@@ -35,7 +33,6 @@ from launch.substitutions import (
 )
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
-from launch_ros.substitutions import FindPackageShare
 
 import yaml
 
@@ -56,16 +53,12 @@ def generate_launch_description():
     use_fake_hardware_parameter_name = 'use_fake_hardware'
     fake_sensor_commands_parameter_name = 'fake_sensor_commands'
     namespace_parameter_name = 'namespace'
-    load_gripper_parameter_name = 'load_gripper'
-    ee_id_parameter_name = 'ee_id'
 
     robot_ip = LaunchConfiguration(robot_ip_parameter_name)
     use_fake_hardware = LaunchConfiguration(use_fake_hardware_parameter_name)
     fake_sensor_commands = LaunchConfiguration(
         fake_sensor_commands_parameter_name)
     namespace = LaunchConfiguration(namespace_parameter_name)
-    load_gripper = LaunchConfiguration(load_gripper_parameter_name)
-    ee_id = LaunchConfiguration(ee_id_parameter_name)
 
     # Command-line arguments
 
@@ -80,8 +73,8 @@ def generate_launch_description():
     )
 
     robot_description_config = Command(
-        [FindExecutable(name='xacro'), ' ', franka_xacro_file, ' hand:=', load_gripper,
-         ' robot_ip:=', robot_ip, ' ee_id:=', ee_id, ' use_fake_hardware:=', use_fake_hardware,
+        [FindExecutable(name='xacro'), ' ', franka_xacro_file, ' hand:=false',
+         ' robot_ip:=', robot_ip, ' ee_id:=none', ' use_fake_hardware:=', use_fake_hardware,
          ' fake_sensor_commands:=', fake_sensor_commands, ' ros2_control:=true'])
 
     robot_description = {'robot_description': ParameterValue(
@@ -94,7 +87,7 @@ def generate_launch_description():
 
     robot_description_semantic_config = Command(
         [FindExecutable(name='xacro'), ' ',
-         franka_semantic_xacro_file, ' hand:=', load_gripper, ' ee_id:=', ee_id]
+         franka_semantic_xacro_file, ' hand:=false', ' ee_id:=none']
     )
 
     robot_description_semantic = {'robot_description_semantic': ParameterValue(
@@ -231,7 +224,7 @@ def generate_launch_description():
         name='joint_state_publisher',
         namespace=namespace,
         parameters=[
-            {'source_list': ['franka/joint_states', 'fr3_gripper/joint_states'], 'rate': 30}],
+            {'source_list': ['franka/joint_states'], 'rate': 30}],
     )
 
     franka_robot_state_broadcaster = Node(
@@ -252,16 +245,6 @@ def generate_launch_description():
         default_value='',
         description='Namespace for the robot.'
     )
-    load_gripper_arg = DeclareLaunchArgument(
-        load_gripper_parameter_name,
-        default_value='true',
-        description='Whether to load the gripper or not (true or false)'
-    )
-    ee_id_arg = DeclareLaunchArgument(
-        ee_id_parameter_name,
-        default_value='franka_hand',
-        description='The end-effector id to use. Available options: none, franka_hand, cobot_pump'
-    )
     use_fake_hardware_arg = DeclareLaunchArgument(
         use_fake_hardware_parameter_name,
         default_value='false',
@@ -271,18 +254,9 @@ def generate_launch_description():
         default_value='false',
         description="Fake sensor commands. Only valid when '{}' is true".format(
             use_fake_hardware_parameter_name))
-    gripper_launch_file = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([PathJoinSubstitution(
-            [FindPackageShare('franka_gripper'), 'launch', 'gripper.launch.py'])]),
-        launch_arguments={'robot_ip': robot_ip,
-                          use_fake_hardware_parameter_name: use_fake_hardware,
-                          'namespace': namespace}.items(),
-    )
     return LaunchDescription(
         [robot_arg,
          namespace_arg,
-         load_gripper_arg,
-         ee_id_arg,
          use_fake_hardware_arg,
          fake_sensor_commands_arg,
          db_arg,
@@ -291,8 +265,7 @@ def generate_launch_description():
          run_move_group_node,
          ros2_control_node,
          joint_state_publisher,
-         franka_robot_state_broadcaster,
-         gripper_launch_file
+         franka_robot_state_broadcaster
          ]
         + load_controllers
     )

@@ -15,7 +15,6 @@
   <depend>franka_fr3_moveit_config</depend>
   <depend>franka_gazebo_bringup</depend>
   <depend>gz_ros2_control</depend>
-  <depend>franka_gripper</depend>
   <depend>franka_hardware</depend>
   <depend>franka_msgs</depend>
   <depend>libfranka</depend>

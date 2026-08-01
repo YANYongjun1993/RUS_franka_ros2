@@ -9,5 +9,5 @@ removed.
 
     ros2 launch franka_gazebo_bringup visualize_franka_robot.launch.py
 
-Use ``robot_type`` to select a different robot model. To include the Franka
-hand, pass ``load_gripper:=true franka_hand:=franka_hand``.
+Use ``robot_type`` to select a different robot model. The visualization is
+configured without a hand, matching the flange-mounted ultrasound probe.
