@@ -43,9 +43,6 @@ USER $USERNAME
 # Install some ROS 2 dependencies to create a cache layer
 RUN sudo apt-get update \
     && sudo apt-get install -y --no-install-recommends \
-        ros-humble-ros-gz \
-        ros-humble-sdformat-urdf \
-        ros-humble-joint-state-publisher-gui \
         ros-humble-ros2controlcli \
         ros-humble-controller-interface \
         ros-humble-hardware-interface-testing \
@@ -53,8 +50,6 @@ RUN sudo apt-get update \
         ros-humble-ament-cmake-clang-tidy \
         ros-humble-controller-manager \
         ros-humble-ros2-control-test-assets \
-        libignition-gazebo6-dev \
-        libignition-plugin-dev \
         ros-humble-hardware-interface \
         ros-humble-control-msgs \
         ros-humble-backward-ros \
@@ -62,18 +57,11 @@ RUN sudo apt-get update \
         ros-humble-realtime-tools \
         ros-humble-joint-state-publisher \
         ros-humble-joint-state-broadcaster \
-        ros-humble-moveit-ros-move-group \
-        ros-humble-moveit-kinematics \
-        ros-humble-moveit-planners-ompl \
-        ros-humble-moveit-ros-visualization \
-        ros-humble-joint-trajectory-controller \
-        ros-humble-moveit-simple-controller-manager \
         ros-humble-rviz2 \
         ros-humble-xacro \
         ros-humble-teleop-twist-keyboard \
         ros-humble-joy \
         ros-humble-teleop-twist-joy \
-
     && sudo apt-get clean \
     && sudo rm -rf /var/lib/apt/lists/*
 
