@@ -8,8 +8,8 @@ which are stored in the hardware_state_interface as a double pointer.
 For further reference on how to use these classes:
 `Franka Robot State Broadcaster <https://github.com/frankarobotics/franka_ros2/tree/jazzy/franka_robot_state_broadcaster>`_
 and
-`Franka Example Controllers(model_example_controller)
-<https://github.com/frankarobotics/franka_ros2/blob/jazzy/franka_example_controllers/src/model_example_controller.cpp>`_
+The ultrasound scanning controller demonstrates use of ``FrankaRobotModel`` in
+``franka_example_controllers/src/fr3/ultrasound_scanning_impedance_controller.cpp``.
 
 Cartesian Pose Interface
 -------------------------

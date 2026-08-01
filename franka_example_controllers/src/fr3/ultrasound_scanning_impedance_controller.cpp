@@ -145,8 +145,7 @@ controller_interface::return_type UltrasoundScanningImpedanceController::update(
   const double normal_velocity =
       clamp_abs(admittance_gain_ * force_error, std::max(1e-6, normal_v_max_));
   normal_pos_desired_ += dt * normal_velocity;
-  normal_pos_desired_ = std::clamp(normal_pos_desired_,
-                                   normal_pos_initial_ - normal_max_disp_,
+  normal_pos_desired_ = std::clamp(normal_pos_desired_, normal_pos_initial_ - normal_max_disp_,
                                    normal_pos_initial_ + normal_max_disp_);
 
   // ---- Position error in flange frame ----
@@ -166,10 +165,9 @@ controller_interface::return_type UltrasoundScanningImpedanceController::update(
   // ===========================================================================
 
   // Compute orientation error in world frame using the standard cross-product form.
-  const Vector3d orientation_error_world =
-      0.5 * (rotation.col(0).cross(rotation_initial_.col(0)) +
-             rotation.col(1).cross(rotation_initial_.col(1)) +
-             rotation.col(2).cross(rotation_initial_.col(2)));
+  const Vector3d orientation_error_world = 0.5 * (rotation.col(0).cross(rotation_initial_.col(0)) +
+                                                  rotation.col(1).cross(rotation_initial_.col(1)) +
+                                                  rotation.col(2).cross(rotation_initial_.col(2)));
 
   // Transform orientation error and angular velocity into the flange frame
   // so that selective stiffness axes (roll/pitch/yaw) follow the end-effector.
@@ -180,9 +178,8 @@ controller_interface::return_type UltrasoundScanningImpedanceController::update(
   //   Roll  (X): K_rx ≈ 0   →  free rotation to adapt to body curvature
   //   Pitch (Y): K_ry = 30  →  locked to initial
   //   Yaw   (Z): K_rz = 30  →  locked to prevent spinning
-  const Vector3d torque_flange =
-      rotational_stiffness_.cwiseProduct(orientation_error_flange) -
-      rotational_damping_.cwiseProduct(angular_velocity_flange);
+  const Vector3d torque_flange = rotational_stiffness_.cwiseProduct(orientation_error_flange) -
+                                 rotational_damping_.cwiseProduct(angular_velocity_flange);
 
   // Rotate the orientation torque back into world frame for J^T mapping.
   const Vector3d torque_command_world = rotation * torque_flange;
@@ -233,8 +230,7 @@ controller_interface::return_type UltrasoundScanningImpedanceController::update(
 
   const Matrix7x6d jacobian_transpose = jacobian_.transpose();
   constexpr double kDampedLeastSquares = 1e-4;
-  const Eigen::Matrix<double, kCartesianDim, kCartesianDim> jj_t =
-      jacobian_ * jacobian_transpose;
+  const Eigen::Matrix<double, kCartesianDim, kCartesianDim> jj_t = jacobian_ * jacobian_transpose;
   const Eigen::Matrix<double, kCartesianDim, kCartesianDim> jj_t_damped =
       jj_t + kDampedLeastSquares * Eigen::Matrix<double, kCartesianDim, kCartesianDim>::Identity();
   const Matrix7d nullspace_projector =
@@ -358,8 +354,8 @@ CallbackReturn UltrasoundScanningImpedanceController::on_init() {
 
     // Phase 2 – rotational gains (flange frame: X=roll, Y=pitch, Z=yaw)
     auto_declare<double>("rotational_stiffness.x", 0.0);   // free roll
-    auto_declare<double>("rotational_stiffness.y", 30.0);   // locked pitch
-    auto_declare<double>("rotational_stiffness.z", 30.0);   // locked yaw
+    auto_declare<double>("rotational_stiffness.y", 30.0);  // locked pitch
+    auto_declare<double>("rotational_stiffness.z", 30.0);  // locked yaw
 
     auto_declare<double>("rotational_damping.x", 1.0);
     auto_declare<double>("rotational_damping.y", 6.0);
@@ -401,12 +397,9 @@ CallbackReturn UltrasoundScanningImpedanceController::on_configure(
   arm_prefix_ = arm_prefix_.empty() ? "" : arm_prefix_ + "_";
 
   // Phase 1
-  translational_stiffness_.x() =
-      get_node()->get_parameter("translational_stiffness.x").as_double();
-  translational_stiffness_.y() =
-      get_node()->get_parameter("translational_stiffness.y").as_double();
-  translational_stiffness_.z() =
-      get_node()->get_parameter("translational_stiffness.z").as_double();
+  translational_stiffness_.x() = get_node()->get_parameter("translational_stiffness.x").as_double();
+  translational_stiffness_.y() = get_node()->get_parameter("translational_stiffness.y").as_double();
+  translational_stiffness_.z() = get_node()->get_parameter("translational_stiffness.z").as_double();
 
   translational_damping_.x() = get_node()->get_parameter("translational_damping.x").as_double();
   translational_damping_.y() = get_node()->get_parameter("translational_damping.y").as_double();
@@ -458,9 +451,8 @@ CallbackReturn UltrasoundScanningImpedanceController::on_activate(
       arm_prefix_ + robot_type_ + "/" + k_robot_state_interface_name;
 
   const auto it = std::find_if(
-      state_interfaces_.cbegin(), state_interfaces_.cend(), [&](const auto& interface) {
-        return interface.get_name() == robot_state_interface_name;
-      });
+      state_interfaces_.cbegin(), state_interfaces_.cend(),
+      [&](const auto& interface) { return interface.get_name() == robot_state_interface_name; });
 
   if (it == state_interfaces_.cend()) {
     RCLCPP_ERROR(get_node()->get_logger(), "Could not find robot state interface: %s",
@@ -534,10 +526,9 @@ void UltrasoundScanningImpedanceController::initialize_targets() {
   normal_pos_desired_ = 0.0;
 
   // Initialize force filter with current measured normal force in flange frame.
-  const Eigen::Vector3d ext_force_world_init(
-      robot_state_ptr_->O_F_ext_hat_K[0],
-      robot_state_ptr_->O_F_ext_hat_K[1],
-      robot_state_ptr_->O_F_ext_hat_K[2]);
+  const Eigen::Vector3d ext_force_world_init(robot_state_ptr_->O_F_ext_hat_K[0],
+                                             robot_state_ptr_->O_F_ext_hat_K[1],
+                                             robot_state_ptr_->O_F_ext_hat_K[2]);
   force_normal_filtered_ = (rotation_initial_.transpose() * ext_force_world_init).z();
 }
 
