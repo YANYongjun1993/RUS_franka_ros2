@@ -20,37 +20,21 @@ Please refer to the `README.md <https://github.com/frankarobotics/franka_ros2/bl
 Package Overview
 ----------------
 
-This package contains the launch files for the examples as well as the basic ``franka.launch.py`` launch file, that
-can be used to start the robot without any controllers.
+This package contains the core Franka launch files and the ultrasound scanning
+controller launcher. The basic ``franka.launch.py`` file starts the robot
+without an application controller.
 
 When you start the robot with::
 
     ros2 launch franka_bringup franka.launch.py robot_type:=fr3 robot_ip:=<fci-ip> use_rviz:=true
 
-There is no controller running apart from the ``joint_state_broadcaster``. However, a connection with the robot is still
-established and the current robot pose is visualized in RViz. In this mode the robot can be guided when the user stop
-button is pressed. However, once a controller that uses the ``effort_command_interface`` is started, the robot will be
-using the torque interface from libfranka. For example it is possible to launch the
-``gravity_compensation_example_controller`` by running::
+There is no application controller running apart from the state broadcasters.
+The ultrasound controller can be started with::
 
-    ros2 control load_controller --set-state active  gravity_compensation_example_controller
+    ros2 launch franka_bringup ultrasound_scanning_impedance_controller.launch.py
 
-This is the equivalent of running the ``gravity_compensation_example_controller`` example mentioned in
-:doc:`Gravity Compensation <../../franka_example_controllers/doc/index>`.
-
-When the controller is stopped with::
-
-    ros2 control set_controller_state gravity_compensation_example_controller inactive
-
-the robot will stop the torque control and will only send its current state over the FCI.
-
-You can now choose to start the same controller again with::
-
-    ros2 control set_controller_state gravity_compensation_example_controller active
-
-or load and start a different one::
-
-    ros2 control load_controller --set-state active joint_impedance_example_controller
+This loads the effort-command controller through ``controller_manager`` and
+uses the torque interface from libfranka.
 
 
 Namespace enabled launch files
@@ -78,16 +62,12 @@ Each configuration and launch file (``franka.config.yaml``, ``example.launch.py`
 contains detailed inline documentation. For more information about namespaces in ROS 2, refer to the
 `ROS 2 documentation <https://docs.ros.org/en/jazzy/Tutorials/Intermediate/Launch/Using-ROS2-Launch-For-Large-Projects.html#namespaces>`_.
 
-To execute any of the example controllers defined in ``controllers.yaml``, use the ``example.launch.py`` launch file and specify
-the controller name as a command-line argument.
-
-First, modify ``franka.config.yaml`` as needed for your setup.
-
-Then, to run the ``move_to_start_example_controller``, use the following command:
+The retained controller is registered in ``controllers.yaml``. First modify
+``franka.config.yaml`` for your robot, then run:
 
 .. code-block:: shell
 
-    ros2 launch franka_bringup example.launch.py controller_name:=move_to_start_example_controller
+    ros2 launch franka_bringup ultrasound_scanning_impedance_controller.launch.py
 
 Non-realtime robot parameter setting
 ------------------------------------

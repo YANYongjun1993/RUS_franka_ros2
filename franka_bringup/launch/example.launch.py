@@ -19,10 +19,10 @@
 #                   (default: franka.config.yaml in franka_bringup/config)
 #
 # The example.launch.py launch file provides a flexible and unified interface
-# for launching Franka Robotics example controllers via the 'controller_name'
-# parameter, such as 'elbow_example_controller'.
+# for launching the ultrasound scanning controller via 'controller_names'.
 # Example:
-# ros2 launch franka_bringup example.launch.py controller_name:=elbow_example_controller
+# ros2 launch franka_bringup example.launch.py \
+#   controller_names:=ultrasound_scanning_impedance_controller
 #
 # This script "includes" franka.launch.py to declare core component nodes,
 # including: robot_state_publisher, ros2_control_node, joint_state_publisher,

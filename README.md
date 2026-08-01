@@ -122,16 +122,16 @@ All parameters are loaded from YAML configuration. Default values are shown belo
 ## Dependencies
 
 - `controller_interface` – ROS 2 control framework
+- `libfranka` – Franka robot state and model types
 - `franka_semantic_components` – `FrankaRobotModel` for kinematics/dynamics
 - `Eigen3` – linear algebra
 - `rclcpp` / `rclcpp_lifecycle` – ROS 2 core
 - `pluginlib` – dynamic plugin loading
 - `std_msgs` – status publishing
-- `franka_msgs` – Franka message types
 
 ## Usage
 
-### Clone the latests dependencies
+### Clone the latest dependencies
 ```bash
 vcs import src < src/dependency.repos --recursive --skip-existing
 ```
@@ -151,10 +151,10 @@ This wraps the shared `example.launch.py` launcher, which brings up the full FR3
 
 ### Configuration
 
-Edit the parameter file at:
+Edit the controller parameters in:
 
 ```
-franka_bringup/config/ultrasound_scanning_impedance_controller.yaml
+franka_bringup/config/controllers.yaml
 ```
 
 ### Controller Plugin
@@ -179,7 +179,7 @@ franka_example_controllers/
 
 franka_bringup/
 ├── config/
-│   └── ultrasound_scanning_impedance_controller.yaml  # Parameters
+│   └── controllers.yaml                                # Manager and controller parameters
 └── launch/
     └── ultrasound_scanning_impedance_controller.launch.py  # Launch file
 ```

@@ -18,9 +18,9 @@
 #include <string>
 #include <vector>
 
+#include <franka/robot_state.h>
 #include <Eigen/Dense>
 #include <controller_interface/controller_interface.hpp>
-#include <franka/robot_state.h>
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/float64_multi_array.hpp>
 
@@ -127,11 +127,11 @@ class UltrasoundScanningImpedanceController : public controller_interface::Contr
   Vector3d rotational_damping_{1.0, 6.0, 6.0};
 
   // --- Force control / admittance parameters ---
-  double force_normal_desired_{5.0};   // Desired normal contact force [N] (pressing-positive)
+  double force_normal_desired_{5.0};  // Desired normal contact force [N] (pressing-positive)
   double force_filter_cutoff_hz_{20.0};
-  double admittance_gain_{2e-4};       // m/s per N of force error
-  double normal_v_max_{0.02};          // Max admittance velocity [m/s]
-  double normal_max_disp_{0.02};       // Max admittance displacement [m]
+  double admittance_gain_{2e-4};  // m/s per N of force error
+  double normal_v_max_{0.02};     // Max admittance velocity [m/s]
+  double normal_max_disp_{0.02};  // Max admittance displacement [m]
 
   // --- Nullspace stabilization ---
   double nullspace_stiffness_{15.0};
